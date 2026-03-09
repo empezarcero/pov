@@ -1,0 +1,48 @@
+[project]
+name = "pov-desktop"
+version = "0.1.0"
+description = "Point of View – Screenshot capture, mouse/keyboard control, and window management as a CLI and MCP server for LLM agents"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Evgeny Pinchuk", email = "evgeny@delphoslabs.com" }
+]
+requires-python = ">=3.11"
+keywords = ["mcp", "screenshot", "desktop", "automation", "llm", "mouse", "keyboard", "window"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Desktop Environment",
+    "Topic :: Multimedia :: Graphics :: Capture :: Screen Capture",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "cyclopts>=3.0",
+    "fastmcp>=2.0",
+    "mss>=9.0",
+    "pillow>=11.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/empezarcero/pov"
+Repository = "https://github.com/empezarcero/pov"
+Issues = "https://github.com/empezarcero/pov/issues"
+
+[project.scripts]
+pov = "pov.cli:app"
+
+[project.entry-points."mcp.servers"]
+pov = "pov.server:mcp"
+
+[build-system]
+requires = ["uv_build>=0.9.16,<0.10.0"]
+build-backend = "uv_build"
