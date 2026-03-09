@@ -8,13 +8,25 @@ Works on **Windows**, **macOS**, **Linux** (X11/Wayland), and **WSL**.
 ## Install
 
 ```bash
-uv sync
+# With uv
+uv pip install pov-desktop
+
+# With pip
+pip install pov-desktop
 ```
 
-Or install globally:
+To install the `pov` CLI as a standalone tool:
 
 ```bash
-uv tool install .
+uv tool install pov-desktop
+```
+
+Or from source:
+
+```bash
+git clone https://github.com/empezarcero/pov.git
+cd pov
+uv sync
 ```
 
 ## CLI Usage
