@@ -26,8 +26,8 @@ mcp = FastMCP(
     name="pov",
     instructions=(
         "Point of View (pov) gives you eyes and hands on the user's desktop. "
-        "Use `screenshot` to see what is on screen, `list_monitors` for "
-        "display info. Use `mouse_click`, `mouse_move`, `mouse_scroll` to "
+        "Use `screenshot` to see what is on screen (pass `hwnd` to capture a "
+        "single window), `list_monitors` for display info. Use `mouse_click`, "
         "control the mouse. Use `keyboard_type` and `keyboard_key` for "
         "keyboard input. Use `list_windows`, `focus_window`, "
         "`set_window_state`, `move_window`, `resize_window` to manage "
@@ -43,8 +43,9 @@ mcp = FastMCP(
 def screenshot(
     monitor: int = 0,
     max_width: int = 1920,
+    hwnd: int = 0,
 ) -> ToolResult:
-    """Capture a screenshot of the user's screen.
+    """Capture a screenshot of the user's screen or a single window.
 
     Returns the image so you can see what the user sees.
 
@@ -57,10 +58,21 @@ def screenshot(
     max_width:
         Maximum width in pixels.  The image is down-scaled (preserving
         aspect ratio) if it exceeds this.  Use 0 to disable.
+    hwnd:
+        Window handle (from ``list_windows``) to capture just one window
+        instead of the whole screen.  Native Windows only.
     """
-    from pov.screenshot import capture_screenshot_b64
+    if hwnd:
+        import base64 as _b64
 
-    b64 = capture_screenshot_b64(monitor, max_width=max_width)
+        from pov.screenshot import capture_window
+
+        data = capture_window(hwnd, max_width=max_width or 0)
+        b64 = _b64.b64encode(data).decode("ascii")
+    else:
+        from pov.screenshot import capture_screenshot_b64
+
+        b64 = capture_screenshot_b64(monitor, max_width=max_width)
     return ToolResult(
         content=[
             types.ImageContent(type="image", data=b64, mimeType="image/png"),

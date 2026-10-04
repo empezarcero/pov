@@ -1,6 +1,6 @@
 [project]
 name = "pov-desktop"
-version = "0.1.0"
+version = "0.2.0"
 description = "Point of View – Screenshot capture, mouse/keyboard control, and window management as a CLI and MCP server for LLM agents"
 readme = "README.md"
 license = "MIT"

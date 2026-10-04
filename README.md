@@ -36,6 +36,7 @@ uv sync
 pov capture                     # Capture screenshot, print base64
 pov capture --output shot.png   # Save to file
 pov capture --monitor 1         # Specific monitor
+pov capture --hwnd 12345        # A single window (native Windows)
 pov monitors                    # List available monitors
 
 # Mouse
@@ -135,7 +136,7 @@ Add to your MCP config:
 
 | Platform | Backend | Notes |
 |----------|---------|-------|
-| Windows  | `mss` + `ctypes` | Screenshots via mss, input/windows via Win32 |
+| Windows  | `mss` + `ctypes` | Screenshots via mss; input/windows via direct Win32 `ctypes` calls (no PowerShell subprocess); window capture via `GetWindowRect` + region grab |
 | macOS    | `mss`   | Screenshot capture only |
 | Linux    | `mss`   | Screenshot capture only (X11 and Wayland) |
 | WSL      | PowerShell + .NET/Win32 | Full support — captures the **Windows desktop**, controls mouse/keyboard, manages windows |

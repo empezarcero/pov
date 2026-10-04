@@ -19,12 +19,23 @@ Usage::
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Annotated
 
 import cyclopts
 
 from pov import __version__
+
+# Window titles can contain any Unicode (emoji, zero-width chars, CJK); never
+# let a legacy console codepage crash printing them.  Runs at import time so
+# it covers both entry points (``pov`` shim -> ``app``, ``python -m pov`` ->
+# ``main``).
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="backslashreplace")
+    except (AttributeError, ValueError):
+        pass
 
 app = cyclopts.App(
     name="pov",
@@ -51,6 +62,12 @@ def capture(
         int,
         cyclopts.Parameter(help="Monitor index (0 = all monitors combined)."),
     ] = 0,
+    hwnd: Annotated[
+        int,
+        cyclopts.Parameter(
+            help="Capture a single window by handle (from 'pov windows').",
+        ),
+    ] = 0,
     max_width: Annotated[
         int,
         cyclopts.Parameter(help="Max width in pixels (0 = no resize)."),
@@ -58,9 +75,22 @@ def capture(
 ) -> None:
     """Capture a screenshot.
 
+    With --hwnd, captures just that window (native Windows only).
     If --output is given, saves the PNG to that path.
     Otherwise prints base64-encoded PNG to stdout (useful for piping to LLMs).
     """
+    if hwnd:
+        import base64 as _b64
+
+        from pov.screenshot import capture_window, save_window_screenshot
+
+        if output is not None:
+            path = save_window_screenshot(output, hwnd, max_width=max_width)
+            print(f"Screenshot saved to {path}")
+        else:
+            print(_b64.b64encode(capture_window(hwnd, max_width=max_width)).decode("ascii"))
+        return
+
     from pov.screenshot import capture_screenshot_b64, save_screenshot
 
     if output is not None:

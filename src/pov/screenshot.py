@@ -199,6 +199,51 @@ def _mss_capture(monitor: int = 0) -> Image.Image:
         return Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
 
 
+def _mss_capture_window(hwnd: int) -> Image.Image:
+    """Capture a single window's rectangle via mss (native Windows only).
+
+    Coordinates come from ``GetWindowRect`` after the process opts into
+    per-monitor DPI awareness, so they are physical pixels and line up with
+    mss region capture.  The rect is clamped to the virtual screen so a
+    partially off-screen window still captures instead of erroring.
+    """
+    import ctypes
+
+    import mss
+
+    from pov import win32_native
+
+    win32_native.init_dpi_awareness()
+    user32 = win32_native.user32
+    handle = win32_native._check_handle(hwnd)
+    rect = win32_native.RECT()
+    user32.GetWindowRect(handle, ctypes.byref(rect))
+
+    # Clamp to the virtual screen (all monitors combined).
+    left = max(rect.left, user32.GetSystemMetrics(76))   # SM_XVIRTUALSCREEN
+    top = max(rect.top, user32.GetSystemMetrics(77))     # SM_YVIRTUALSCREEN
+    right = min(
+        rect.right, user32.GetSystemMetrics(76) + user32.GetSystemMetrics(78)
+    )  # CXVIRTUALSCREEN
+    bottom = min(
+        rect.bottom, user32.GetSystemMetrics(77) + user32.GetSystemMetrics(79)
+    )  # CYVIRTUALSCREEN
+    width = right - left
+    height = bottom - top
+    if width <= 0 or height <= 0:
+        raise ValueError(
+            f"Window {hwnd} has no on-screen area (minimized or off-screen?)"
+        )
+
+    import time
+
+    # Give a just-restored/focused window one frame to repaint its surface.
+    time.sleep(0.05)
+    with mss.mss() as sct:
+        raw = sct.grab({"left": left, "top": top, "width": width, "height": height})
+        return Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
+
+
 def _mss_list_monitors() -> list[dict[str, int]]:
     """List monitors via mss."""
     import mss
@@ -270,6 +315,36 @@ def capture_screenshot(
     img = _mss_capture(monitor)
     img = _resize(img, max_width)
     return _to_png(img)
+
+
+def capture_window(
+    hwnd: int,
+    *,
+    max_width: int = 0,
+) -> bytes:
+    """Capture a single window by handle and return PNG bytes.
+
+    Native Windows only (the WSL PowerShell bridge captures whole monitors).
+    ``max_width`` defaults to 0 (no down-scale) since windows are usually
+    smaller than the full screen; pass a value to cap the width anyway.
+    """
+    if is_wsl():
+        raise RuntimeError("Window capture is not supported on WSL")
+    img = _mss_capture_window(hwnd)
+    img = _resize(img, max_width)
+    return _to_png(img)
+
+
+def save_window_screenshot(
+    path: str | Path,
+    hwnd: int,
+    *,
+    max_width: int = 0,
+) -> Path:
+    """Capture a window and save the PNG to *path*."""
+    path = Path(path)
+    path.write_bytes(capture_window(hwnd, max_width=max_width))
+    return path.resolve()
 
 
 def capture_screenshot_b64(

@@ -359,7 +359,10 @@ def _wsl_run_window(action: str, **kwargs: object) -> Any:
 
 
 def _run_ps_native(action: str, **kwargs: object) -> Any:
-    """Run the PS window script on native Windows (via powershell.exe)."""
+    """Run the PS window script on native Windows (via powershell.exe).
+
+    Kept as a fallback; the primary native path is ``pov.win32_native``.
+    """
     payload = json.dumps({"action": action, **kwargs})
     # Escape single quotes for PowerShell single-quoted string embedding
     payload_escaped = payload.replace("'", "''")
@@ -382,10 +385,41 @@ def _run_ps_native(action: str, **kwargs: object) -> Any:
 
 
 def _run(action: str, **kwargs: object) -> Any:
-    """Route to WSL or native backend."""
+    """Route to WSL (PowerShell bridge) or the native ctypes backend."""
     if is_wsl():
         return _wsl_run_window(action, **kwargs)
-    return _run_ps_native(action, **kwargs)
+    # Native Windows: direct user32 calls, no PowerShell subprocess.
+    from pov import win32_native as native
+
+    if action == "list_windows":
+        return native.native_list_windows()
+    if action == "list_processes":
+        return native.native_list_processes()
+    if action == "focus_window":
+        return native.native_focus_window(int(kwargs["hwnd"]))
+    if action == "set_window_state":
+        return native.native_set_window_state(
+            int(kwargs["hwnd"]), str(kwargs["state"])
+        )
+    if action == "move_window":
+        return native.native_move_window(
+            int(kwargs["hwnd"]),
+            x=int(kwargs["x"]),
+            y=int(kwargs["y"]),
+            width=int(kwargs["width"]),
+            height=int(kwargs["height"]),
+        )
+    if action == "resize_window":
+        return native.native_resize_window(
+            int(kwargs["hwnd"]),
+            width=int(kwargs["width"]),
+            height=int(kwargs["height"]),
+        )
+    if action == "get_foreground":
+        return native.native_get_foreground_window()
+    if action == "close_window":
+        return native.native_close_window(int(kwargs["hwnd"]))
+    raise ValueError(f"Unknown action: {action}")
 
 
 # ---------------------------------------------------------------------------

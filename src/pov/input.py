@@ -431,59 +431,41 @@ def get_cursor_position() -> dict[str, int]:
 def type_text(text: str) -> dict:
     """Type a string of text as if the user pressed each key.
 
-    Special SendKeys characters are escaped so the literal text is typed.
+    On native Windows, characters are sent via ``SendInput`` with
+    ``KEYEVENTF_UNICODE``, so arbitrary Unicode (CJK, emoji, symbols)
+    types correctly regardless of the active keyboard layout.
 
     Parameters
     ----------
     text:
         The text to type.
     """
-    escaped = _escape_sendkeys_text(text)
     if is_wsl():
+        escaped = _escape_sendkeys_text(text)
         return _wsl_run_input("type_text", text=escaped)
 
-    # On native Windows, fall back to PowerShell SendKeys as well since
-    # ctypes keybd_event for arbitrary text is complex.
-    _wsl_run_ps_native("type_text", text=escaped)
-    return {"ok": True}
+    from pov import win32_native
+
+    return win32_native.native_type_text(text)
 
 
 def key_press(keys: str) -> dict:
     """Press a key or key combination.
 
     Accepts human-friendly combos like ``ctrl+c``, ``alt+f4``, ``enter``,
-    ``ctrl+shift+t``, etc.
+    ``ctrl+shift+t``, ``win+e``, etc.
 
     Parameters
     ----------
     keys:
         Key combination string (e.g. ``"ctrl+c"``, ``"enter"``).
     """
-    sendkeys_str = _key_combo_to_sendkeys(keys)
     if is_wsl():
+        sendkeys_str = _key_combo_to_sendkeys(keys)
         return _wsl_run_input("key_press", keys=sendkeys_str)
 
-    # Native Windows fallback
-    _wsl_run_ps_native("key_press", keys=sendkeys_str)
-    return {"ok": True}
+    from pov import win32_native
+
+    return win32_native.native_key_press(keys)
 
 
-def _wsl_run_ps_native(action: str, **kwargs: object) -> dict:
-    """Run the same PS input script on native Windows (via powershell.exe)."""
-    # On native Windows, powershell.exe is available directly
-    payload = json.dumps({"action": action, **kwargs})
-    # Escape single quotes for PowerShell single-quoted string embedding
-    payload_escaped = payload.replace("'", "''")
-    script = _PS_INPUT_SCRIPT.replace("'__INPUT_JSON__'", f"'{payload_escaped}'")
-    result = subprocess.run(
-        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
-        capture_output=True,
-        text=True,
-        timeout=15,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"PowerShell input command failed (exit {result.returncode}):\n"
-            f"{result.stderr.strip()}"
-        )
-    return json.loads(result.stdout.strip())
